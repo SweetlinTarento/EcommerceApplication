@@ -16,11 +16,13 @@ namespace EcommerceApplication.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;//UserManager is a package for managing users in application used for creating users, deleting updating, checking passwords, etc.
         public readonly IConfiguration _configuration;//to read application settings like JWT secret key, issuer, audience, etc.
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+        public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration, ILogger<AuthService> logger  )
         {
             _userManager = userManager;
             _configuration = configuration;
+            _logger = logger;
         }
         private bool IsValidPasswordFormat(string password)
         {
@@ -43,26 +45,37 @@ namespace EcommerceApplication.Services
         }
         private string GenerateAccessToken(ApplicationUser user, List<string> roles)
         {
-            var claims = new List<Claim>
+            try
+            {
+                _logger.LogInformation("Generating JWT token for user: {UserId}", user.Id);
+                var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Email, user.Email)
             };
 
-            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+                claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(1),
-                signingCredentials: creds
-            );
+                var token = new JwtSecurityToken(
+                    issuer: _configuration["Jwt:Issuer"],
+                    audience: _configuration["Jwt:Audience"],
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddHours(1),
+                    signingCredentials: creds
+                );
+                var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+                _logger.LogInformation("JWT token generated successfully for user: {UserId}", user.Id);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                return jwt;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while generating JWT token for user: {UserId}", user.Id);
+                throw;
+            }
         }
 
         // Generates a refresh token (cryptographically secure random string)
@@ -80,6 +93,7 @@ namespace EcommerceApplication.Services
             {
             if (!IsValidPasswordFormat(dto.Password))
             {
+                _logger.LogWarning("Password format is invalid for email: {Email}", dto.Email);
                 return new AuthResult
                 {
                     Succeeded = false,
@@ -97,13 +111,15 @@ namespace EcommerceApplication.Services
             if (!result.Succeeded)
             {
                 var errorMessages = string.Join(", ", result.Errors.Select(e => e.Description));
+                _logger.LogError("User creation failed for email: {Email}. Errors: {Errors}",dto.Email, errorMessages);
                 return new AuthResult
                 {
                     Succeeded = false,
                     Message = errorMessages
                 };
             }
-            await _userManager.AddToRoleAsync(user, "CUSTOMER");
+            _logger.LogInformation("User registered successfully with email: {Email}", dto.Email);
+            //await _userManager.AddToRoleAsync(user, "CUSTOMER");
             await _userManager.AddToRoleAsync(user, "ADMIN");
             return new AuthResult
             {
@@ -119,14 +135,22 @@ namespace EcommerceApplication.Services
                 var user = await _userManager.FindByEmailAsync(dto.Email);
 
                 if (user == null)
+                {
+                    _logger.LogWarning("Login attempt failed for email: {Email}. User not found.", dto.Email);
                     throw new Exception("Invalid email");
+                }
+                    
 
                 var isPasswordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
 
                 if (!isPasswordValid)
+                {
+                    _logger.LogWarning("Login attempt failed for email: {Email}. Invalid password.", dto.Email);
                     throw new Exception("Invalid password");
+                }
 
                 var roles = await _userManager.GetRolesAsync(user);
+                _logger.LogInformation("User logged in successfully with email: {Email} and generating token.", dto.Email);
 
                 // Generate access token
                 var accessToken = GenerateAccessToken(user, roles.ToList());
@@ -139,6 +163,7 @@ namespace EcommerceApplication.Services
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = refreshTokenExpiryTime;
                 await _userManager.UpdateAsync(user);
+                _logger.LogInformation("Refresh token generated and saved successfully for user: {Email}", dto.Email);
 
                 return new AuthResponseDTO
                 {
@@ -151,6 +176,7 @@ namespace EcommerceApplication.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred during login for email: {Email}", dto.Email);
                 return new AuthResponseDTO
                 {
                     Succeeded = false,
@@ -166,6 +192,7 @@ namespace EcommerceApplication.Services
                                                                             //GetPrincipalFromExpiredToken is a method to extract claims from an expired token without validating lifetime
                 if (principal == null)//checks if the JWT is fake, malformed or tampered
                 {
+                    _logger.LogWarning("Invalid token provided for refresh.");
                     return new AuthResponseDTO
                     {
                         Succeeded = false,
@@ -178,6 +205,7 @@ namespace EcommerceApplication.Services
 
                 if (user == null || user.RefreshToken != request.RefreshToken)//checking if the existing refresh token matches the one in the database for that user, if not then it is invalid
                 {
+                    _logger.LogWarning("Invalid refresh token provided for user ID: {UserId}", userId);
                     return new AuthResponseDTO
                     {
                         Succeeded = false,
@@ -187,6 +215,7 @@ namespace EcommerceApplication.Services
 
                 if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)//if refresh token expired, have to login again
                 {
+                    _logger.LogWarning("Refresh token expired for user ID: {UserId}", userId);
                     return new AuthResponseDTO
                     {
                         Succeeded = false,
@@ -203,6 +232,7 @@ namespace EcommerceApplication.Services
                 user.RefreshTokenExpiryTime = newRefreshTokenExpiryTime;
                 await _userManager.UpdateAsync(user);
 
+                _logger.LogInformation("Token refreshed successfully for user ID: {UserId}", userId);
                 return new AuthResponseDTO
                 {
                     Succeeded = true,
@@ -214,6 +244,7 @@ namespace EcommerceApplication.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred while refreshing token.");
                 return new AuthResponseDTO
                 {
                     Succeeded = false,
@@ -228,16 +259,20 @@ namespace EcommerceApplication.Services
             {
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
+                {
+                    _logger.LogWarning("Attempt to revoke token failed. User not found with ID: {UserId}", userId);
                     return false;
+                }
 
                 user.RefreshToken = null;
                 user.RefreshTokenExpiryTime = DateTime.MinValue;
                 await _userManager.UpdateAsync(user);
-
+                _logger.LogInformation("Token revoked successfully for user ID: {UserId}", userId);
                 return true;
             }
             catch
             {
+                _logger.LogError("An error occurred while revoking token for user ID: {UserId}", userId);
                 return false;
             }
         }
@@ -263,13 +298,15 @@ namespace EcommerceApplication.Services
                    !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256,
                         StringComparison.InvariantCultureIgnoreCase))
                 {
+                    _logger.LogWarning("JWT rejected due to invalid signing algorithm or token structure");
                     return null;
                 }
 
                 return principal;
             }
-            catch
+            catch(Exception ex) 
             {
+                _logger.LogWarning(ex, "JWT validation failed (token may be expired, malformed, or tampered)");
                 return null;
             }
         }

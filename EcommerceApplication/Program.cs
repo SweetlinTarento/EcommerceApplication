@@ -9,9 +9,17 @@ using EcommerceApplication.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
-using System.Security.Claims;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.File(
+        path:"Logs/log-.txt",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: null,   // keeps ALL days
+        shared: true,
+        flushToDiskInterval: TimeSpan.FromSeconds(1))
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,11 +48,10 @@ builder.Services.AddCors(options =>
 });
 
 
-builder.Services.AddHttpsRedirection(options =>
-{
-    options.HttpsPort = 8000;
-});
-var secret = builder.Configuration["JWT:Key"];
+builder.Host.UseSerilog();
+
+var secret = builder.Configuration["Jwt:Key"];
+builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(options => //used to add authentication services to the application,
                                               //allowing it to authenticate users
                                               //In this case, it sets up JWT (JSON Web Token) authentication as the default scheme for both authentication
@@ -64,7 +71,7 @@ builder.Services.AddAuthentication(options => //used to add authentication servi
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(secret))
+        Encoding.UTF8.GetBytes(secret))
     };
 });
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>() //enables password hashing, user validation, and other identity features for
@@ -102,6 +109,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 
 }
+app.UseStaticFiles();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();

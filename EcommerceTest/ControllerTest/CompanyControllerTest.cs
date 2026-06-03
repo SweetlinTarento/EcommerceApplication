@@ -10,7 +10,7 @@ namespace EcommerceTest.ControllerTest
 {
     public class CompanyControllerTests
     {
-        private readonly Mock<ICompanyService> _mockCompanyService;
+        private readonly Mock<ICompanyService> _mockCompanyService;//Mock is used for fake implementation of ICompanyService
         private readonly CompanyController _companyController;
 
         public CompanyControllerTests()

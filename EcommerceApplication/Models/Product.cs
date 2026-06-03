@@ -10,12 +10,14 @@ namespace EcommerceApplication.Models
         public int Quantity { get; set; }
         public string Description { get; set; }
         public int CompanyId { get; set; }
-        public int? CategoryId { get; set; }  // ? Add this
+        public int? CategoryId { get; set; }  
         
         [JsonIgnore]
         public Company? ProductCompany { get; set; }
         
         [JsonIgnore]
-        public Category? ProductCategory { get; set; }  // ? Add this
+        public Category? ProductCategory { get; set; }
+
+        public string? ImageUrl { get; set; }
     }
 }

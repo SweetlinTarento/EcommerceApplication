@@ -4,6 +4,7 @@ using EcommerceApplication.Models;
 using EcommerceApplication.Repository.Interfaces;
 using EcommerceApplication.Services;
 using FluentAssertions;
+using EcommerceApplication.Pagination;
 using Moq;
 using Xunit;
 

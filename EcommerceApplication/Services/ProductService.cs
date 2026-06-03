@@ -9,17 +9,22 @@ namespace EcommerceApplication.Services
     public class ProductService : IProductService
     {
         private readonly IProductRepository _repository;
+        private readonly IWebHostEnvironment _env;
         private readonly IMapper _mapper;
+        private readonly ILogger<ProductService> _logger;
 
-        public ProductService(IProductRepository repository, IMapper mapper)
+        public ProductService(IProductRepository repository, IMapper mapper, ILogger<ProductService> logger, IWebHostEnvironment env    )
         {
             _repository = repository;
             _mapper = mapper;
+            _logger = logger;
+            _env = env;
         }
 
         public Product Create(Product product)
         {
             _repository.Add(product);
+            _logger.LogInformation($"Product created with ID: {product.Id}");
             return product;
         }
 
@@ -28,7 +33,7 @@ namespace EcommerceApplication.Services
             var product = _repository.GetById(id);
             if (product == null)
                 return false;
-
+            _logger.LogInformation($"Deleting product with ID: {id}");
             _repository.Delete(product);
             return true;
         }
@@ -99,7 +104,7 @@ namespace EcommerceApplication.Services
 
             // Map to DTOs
             var productsDTO = _mapper.Map<List<ProductDTO>>(products);
-
+            _logger.LogInformation($"Retrieved {productsDTO.Count} products for page {filter.Page} with page size {filter.PageSize}");
             return new PagedList<ProductDTO>(
                 productsDTO,
                 totalCount,
@@ -113,6 +118,7 @@ namespace EcommerceApplication.Services
             var products = _repository.GetProductByCompanyId(id);
             if (products == null || !products.Any())
                 return new List<ProductDTO>();
+            _logger.LogInformation($"Retrieved {products.Count} products for company ID: {id}");
 
             return _mapper.Map<List<ProductDTO>>(products);
         }
@@ -123,6 +129,7 @@ namespace EcommerceApplication.Services
             if (product == null)
                 return null;
 
+            _logger.LogInformation($"Retrieved product with ID: {id}");
             return _mapper.Map<ProductDTO>(product);
         }
 
@@ -131,7 +138,8 @@ namespace EcommerceApplication.Services
             var product = _repository.GetByName(name);
             if (product == null)
                 return null;
-
+            
+            _logger.LogInformation($"Retrieved product with name: {name}");
             return _mapper.Map<ProductDTO>(product);
         }
 
@@ -150,7 +158,9 @@ namespace EcommerceApplication.Services
             if (!string.IsNullOrEmpty(product.Description))
                 existing.Description = product.Description;
 
+            
             _repository.Update(existing);
+            _logger.LogInformation($"Patched product with ID: {id}");
             return existing;
         }
 
@@ -164,8 +174,57 @@ namespace EcommerceApplication.Services
             existing.Description = product.Description;
             existing.Price = product.Price;
 
+            
             _repository.Update(existing);
+            _logger.LogInformation($"Updated product with ID: {id}");
             return existing;
+        }
+        public async Task<string> UploadProductImage(int productId, IFormFile file)
+        {
+            var product = _repository.GetById(productId);
+
+            if (product == null)
+            {
+                _logger.LogWarning("Product not found: {ProductId}", productId);
+                return null;
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning("Empty file upload for product: {ProductId}", productId);
+                return null;
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
+            {
+                _logger.LogWarning("Invalid file type for product {ProductId}", productId);
+                return null;
+            }
+
+            var folder = Path.Combine(_env.WebRootPath, "Uploads", "Products");
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+
+            var fileName = Guid.NewGuid() + extension;
+            var filePath = Path.Combine(folder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var imageUrl = $"/uploads/products/{fileName}";
+
+            product.ImageUrl = imageUrl;
+            _repository.Update(product);
+
+            _logger.LogInformation("Image uploaded for product {ProductId}: {ImageUrl}",
+                productId, imageUrl);
+
+            return imageUrl;
         }
     }
 }
