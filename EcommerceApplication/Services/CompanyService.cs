@@ -11,16 +11,19 @@ namespace EcommerceApplication.Services
     {
         private readonly ICompanyRepository _repository;
         private readonly IMapper _mapper;
+        private readonly ILogger<CompanyService> _logger;
 
-        public CompanyService(ICompanyRepository repository, IMapper mapper)
+        public CompanyService(ICompanyRepository repository, IMapper mapper, ILogger<CompanyService> logger)
         {
             _repository = repository;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public Company Create(Company company)
         {
             _repository.Add(company);
+            _logger.LogInformation("Created new company with ID: {CompanyId}", company.CompanyId);
             return company;
         }
 
@@ -28,7 +31,7 @@ namespace EcommerceApplication.Services
         {
             var company = _repository.GetById(id);
             if (company == null) return false;
-
+            _logger.LogInformation("Deleting company with ID: {CompanyId}", id);
             _repository.Delete(company);
             return true;
         }
@@ -39,7 +42,7 @@ namespace EcommerceApplication.Services
             var companies = _repository.GetAll(parameters);
 
             var companiesDTO = _mapper.Map<List<CompanyDTO>>(companies);
-
+            _logger.LogInformation("Retrieved {Count} companies for page {PageNumber} with page size {PageSize}", companiesDTO.Count, pageNumber, pageSize);
             return new PagedList<CompanyDTO>(
                 companiesDTO,
                 companies.TotalCount,
@@ -52,7 +55,7 @@ namespace EcommerceApplication.Services
         {
             var company = _repository.GetById(id);
             if (company == null) return null;
-
+            _logger.LogInformation("Retrieved company with ID: {CompanyId}", id);
             return _mapper.Map<CompanyDTO>(company);
         }
 
@@ -60,7 +63,7 @@ namespace EcommerceApplication.Services
         {
             var company = _repository.GetByName(name);
             if (company == null) return null;
-
+            _logger.LogInformation("Retrieved company with name: {CompanyName}", name);
             return _mapper.Map<CompanyDTO>(company);
         }
 
@@ -83,7 +86,7 @@ namespace EcommerceApplication.Services
 
             if (!string.IsNullOrEmpty(company.Email))
                 existing.Email = company.Email;
-
+            _logger.LogInformation("Patching company with ID: {CompanyId}", id);
             _repository.Update(existing);
             return existing;
         }
@@ -93,6 +96,8 @@ namespace EcommerceApplication.Services
             var parameters = new RequestParameters { PageNumber = pageNumber, PageSize = pageSize };
             var companies = _repository.Search(searchTerm, parameters);
             var companiesDTO = _mapper.Map<List<CompanyDTO>>(companies);
+
+            _logger.LogInformation("Searched companies with term: {SearchTerm}. Found {Count} results for page {PageNumber} with page size {PageSize}", searchTerm, companiesDTO.Count, pageNumber, pageSize);
             return new PagedList<CompanyDTO>(
                 companiesDTO,
                 companies.TotalCount,
@@ -106,6 +111,7 @@ namespace EcommerceApplication.Services
             var parameters = new RequestParameters { PageNumber = pageNumber, PageSize = pageSize };
             var companies = _repository.SearchByLocation(location, parameters);
             var companiesDTO = _mapper.Map<List<CompanyDTO>>(companies);
+            _logger.LogInformation("Searched companies by location: {Location}. Found {Count} results for page {PageNumber} with page size {PageSize}", location, companiesDTO.Count, pageNumber, pageSize);
             return new PagedList<CompanyDTO>(
                 companiesDTO,
                 companies.TotalCount,
@@ -126,6 +132,7 @@ namespace EcommerceApplication.Services
             existing.EstablishedYear = company.EstablishedYear;
             existing.ProductList = company.ProductList;
 
+            _logger.LogInformation("Updating company with ID: {CompanyId}", id);
             _repository.Update(existing);
             return existing;
         }

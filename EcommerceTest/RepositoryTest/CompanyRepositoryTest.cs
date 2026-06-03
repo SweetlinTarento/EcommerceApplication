@@ -3,6 +3,7 @@ using EcommerceApplication.Models;
 using EcommerceApplication.Repository;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.InMemory;
+using EcommerceApplication.Pagination;
 using Xunit;
 using FluentAssertions;
 

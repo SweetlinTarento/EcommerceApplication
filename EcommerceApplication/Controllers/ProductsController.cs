@@ -1,6 +1,7 @@
 using EcommerceApplication.Data;
 using EcommerceApplication.DTO;
 using EcommerceApplication.Models;
+using EcommerceApplication.Services;
 using EcommerceApplication.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,67 +16,98 @@ namespace EcommerceApplication.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly IProductService _service;
+        private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(IProductService service)
+        public ProductsController(IProductService service, ILogger<ProductsController> logger)
         {
             _service = service;
+            _logger = logger;
         }
 
         // GET: ecommerce/products/allproduct?pageNumber=1&pageSize=10
-        [AllowAnonymous]
+        [Authorize]
         [HttpGet("allproduct")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult GetProducts([FromQuery] ProductFilterDTO filter)
         {
-            var result = _service.GetAll(filter);
-            if (result == null||!result.Any())
-                return NotFound("No Products to show");
-            return Ok(result);
+            try
+            {
+                var result = _service.GetAll(filter);
+                if (result == null || !result.Any())
+                    return NotFound("No Products to show");
+                
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving products with the given filter criteria.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+            }
         }
 
 
-
         // GET: ecommerce/products/byproductid/5
-        [AllowAnonymous]
+        [Authorize]
         [HttpGet("byproductid/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<ProductDTO> GetProductById(int id)
         {
-          
-            if (id <= 0)
+            try
             {
-                return BadRequest("Id cannot be 0.");
-            }
-            var product =  _service.GetById(id);
 
-            if (product == null)
-            {
-                return NotFound($"Product with id {id} not found");
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Invalid product ID: {Id}. Product ID must be greater than 0.", id);
+                    return BadRequest("Id cannot be 0.");
+                }
+                var product = _service.GetById(id);
+
+                if (product == null)
+                {
+                    return NotFound($"Product with id {id} not found");
+                }
+                
+                return Ok(product);
             }
-            return Ok(product);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving product with id {Id}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+            }
+
         }
         // GET: ecommerce/products/byproductname/{name} 
-        [AllowAnonymous]
+        [Authorize]
         [HttpGet("byproductname/{name}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<ProductDTO> GetProductByName(string name)
         {
-            if (name.Length==0)
+            try
             {
-                return BadRequest("Name cannot be null.");
-            }
-            var product = _service.GetByName(name);
+                if (string.IsNullOrEmpty(name) )
+                {
+                    _logger.LogWarning("Product name cannot be empty.");
+                    return BadRequest("Name cannot be null.");
+                }
+                var product = _service.GetByName(name);
 
-            if (product == null)
-            {
-                return NotFound($"Product {name} cannot found");
+                if (product == null)
+                {
+                    return NotFound($"Product {name} cannot found");
+                }
+                
+                return Ok(product);
             }
-            return Ok(product);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving product with name {Name}.", name);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+            }
         }
 
         // POST: ecommerce/products/createproduct
@@ -86,19 +118,28 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<Product> PostProduct(Product product)
         {
-            
-            if (product == null||product.CompanyId ==0)
+            try
             {
-                return BadRequest("Product cannot be null.");
+                if (product == null || product.CompanyId == 0)
+                {
+                    _logger.LogWarning("Product cannot be null and must have a valid CompanyId.");
+                    return BadRequest("Product cannot be null.");
+                }
+
+                var p = _service.Create(product);
+                if (p != null)
+                {
+                   
+                    return Ok(p);
+                }
+                else
+                    return BadRequest("Product not present");
             }
-            
-            var p = _service.Create(product);
-            if (p!=null)
+            catch (Exception ex)
             {
-                return Ok(p);
+                _logger.LogError(ex, "An error occurred while creating the product.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
-            else
-                return BadRequest("Product not present");
         }
 
 
@@ -110,17 +151,26 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<ProductDTO> PatchProduct(int id, ProductPatchDTO product)
         {
-            if ( id < 0)
+            try
             {
-                return BadRequest();
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Invalid product ID: {Id}. Product ID must be greater than 0.", id);
+                    return BadRequest();
+                }
+                var existingProduct = _service.Patch(id, product);
+                if (existingProduct == null)
+                {
+                    return NotFound();
+                }
+                
+                return Ok(existingProduct);
             }
-            var existingProduct = _service.Patch(id,product);
-            if(existingProduct == null) 
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, "An error occurred while updating product with id {Id}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
-            
-            return Ok(existingProduct);
         }
         //Put: ecommerce/products/productupdate/5
         [Authorize(Roles = "ADMIN")]
@@ -130,16 +180,26 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<ProductDTO> PutProduct(int id, ProductDTO product)
         {
-            if ( id < 0)
+            try
             {
-                return BadRequest();
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Invalid product ID: {Id}. Product ID must be greater than 0.", id);
+                    return BadRequest();
+                }
+                var existingProduct = _service.Update(id, product);
+                if (existingProduct == null)
+                {
+                    return NotFound();
+                }
+               
+                return Ok(existingProduct);
             }
-            var existingProduct = _service.Update(id, product);
-            if(existingProduct == null)
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, "An error occurred while updating product with id {Id}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
-            return Ok(existingProduct);
         }
         //Get: ecommerce/products/sortedbycompany/5
         [Authorize(Roles = "CUSTOMER")]
@@ -149,16 +209,26 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<ProductDTO> GetProductsByCompany(int id)
         {
-            if (id < 0)
+            try
             {
-                return BadRequest();
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Invalid company ID: {Id}. Company ID must be greater than 0.", id);
+                    return BadRequest();
+                }
+                var existingProduct = _service.GetAllProductsByCompanyId(id);
+                if (existingProduct == null)
+                {
+                    return NotFound();
+                }
+                
+                return Ok(existingProduct);
             }
-            var existingProduct = _service.GetAllProductsByCompanyId(id);
-            if (existingProduct == null)
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, "An error occurred while retrieving products for company with id {Id}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
-            return Ok(existingProduct);
         }
         //DELETE: ecommerce/products/5
         [Authorize(Roles = "ADMIN")]
@@ -169,21 +239,64 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult DeleteProduct(int id)
         {
-            if (id < 0)
+            try
             {
-                return BadRequest("Id cannot be 0.");
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Invalid product ID: {Id}. Product ID must be greater than 0.", id);
+                    return BadRequest("Id cannot be 0.");
+                }
+                var product = _service.GetById(id);
+                if (product == null)
+                {
+                    return NotFound();
+                }
+
+                _service.Delete(id);
+                return NoContent();
             }
-            var product = _service.GetById(id);
-            if (product == null)
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, "An error occurred while deleting product with id {Id}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
-
-           _service.Delete(id);
-
-            return NoContent();
         }
 
-        
+        //to upload picture of product
+        [Authorize(Roles ="ADMIN")]
+        [HttpPost("upload-image/{productId}")]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> UploadImage(int productId, IFormFile file)
+        {
+            try
+            {
+                if (file == null)
+                {
+                    _logger.LogWarning("No file provided for product {ProductId}", productId);
+                    return BadRequest("File is required");
+                }
+
+                var result = await _service.UploadProductImage(productId, file);
+
+                if (result == null)
+                {
+                    return BadRequest("Upload failed");
+                }
+
+                return Ok(new
+                {
+                    message = "Image uploaded successfully",
+                    imageUrl = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading image for product {ProductId}", productId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+
     }
 }
