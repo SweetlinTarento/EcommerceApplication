@@ -14,6 +14,7 @@ namespace EcommerceApplication.Services
 {
     public class AuthService : IAuthService
     {
+        bool value = false, value1 = false;
         private readonly UserManager<ApplicationUser> _userManager;//UserManager is a package for managing users in application used for creating users, deleting updating, checking passwords, etc.
         public readonly IConfiguration _configuration;//to read application settings like JWT secret key, issuer, audience, etc.
         private readonly ILogger<AuthService> _logger;
@@ -24,24 +25,68 @@ namespace EcommerceApplication.Services
             _configuration = configuration;
             _logger = logger;
         }
-        private bool IsValidPasswordFormat(string password)
+        private string IsValidPasswordFormat(string password)
         {
             if (string.IsNullOrEmpty(password) || password.Length < 8)
-                return false;
+            {
+                value = false;
+                return "Password length is less than 8 characters";
+            }
 
             if (!Regex.IsMatch(password, @"[A-Z]"))
-                return false;
+            {
+                value = false;
+                return "Password must conatain atleast one capital letter";
+            }
 
             if (!Regex.IsMatch(password, @"[a-z]"))
-                return false;
+            {
+                value = false;
+                return "Password must contain atleast one small letter";
+            }
+               
 
             if (!Regex.IsMatch(password, @"[0-9]"))
-                return false;
+            {
+                value = false;
+                return "Password must contain atleast one number";
+            }
+
 
             if (!Regex.IsMatch(password, @"[*$%&!@(){}#]"))
-                return false;
+            {
+                value = false;
+                return "Password must contain atleast one non-alphanumerical";
+            }
+            value = true;
+            return "Password is correct";
+        }
+        public string IsValidateEmailFormat(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                value1 = false;
+                return "Email is required.";
+            }
+                
+            email = email.Trim();
 
-            return true;
+            if (email.Length < 8)
+            {
+                value1 = false;
+                return "Email must be at least 8 characters long.";
+
+            }
+
+            string pattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+
+            if (!Regex.IsMatch(email, pattern))
+            {
+                value1 = false;
+                return "Invalid email format.";
+            }
+            value1 = true;
+            return "Email is correct"; // valid email
         }
         private string GenerateAccessToken(ApplicationUser user, List<string> roles)
         {
@@ -91,13 +136,24 @@ namespace EcommerceApplication.Services
 
         public async Task<AuthResult> RegisterAsync(RegisterDTO dto)
             {
-            if (!IsValidPasswordFormat(dto.Password))
+            string message = IsValidateEmailFormat(dto.Email);
+            if (!value1)
+            {
+                _logger.LogWarning("Email format is invalid");
+                return new AuthResult
+                {
+                    Succeeded = false,
+                    Message = message
+                };
+            }
+            string message1 = IsValidPasswordFormat(dto.Password);
+            if (!value)
             {
                 _logger.LogWarning("Password format is invalid for email: {Email}", dto.Email);
                 return new AuthResult
                 {
                     Succeeded = false,
-                    Message = "Password must contain at least one uppercase letter, one lowercase letter, and one number. Only alphanumeric characters are allowed. Minimum 8 characters required."
+                    Message = message1
                 };
             }
             var user = new ApplicationUser

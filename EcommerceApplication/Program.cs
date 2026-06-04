@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
+using Microsoft.OpenApi;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.File(
@@ -34,7 +35,28 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
+    {
+        Version = "v1",
+        Title = "Ecommerce API",
+        Description = "An ASP.NET Core Web API for managing an ecommerce platform"
+    });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT token in the format:{your token}"
+    });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+    });
+});
 
 builder.Services.AddCors(options =>
 {
@@ -50,6 +72,13 @@ builder.Services.AddCors(options =>
 
 builder.Host.UseSerilog();
 
+
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>() //enables password hashing, user validation, and other identity features for
+                                                              //ApplicationUser and IdentityRole, IdentityRole is a class that represents a role in
+                                                              //the identity system, allowing you to manage user roles and permissions effectively and
+                                                              //create AspNetRoles table in the database
+    .AddEntityFrameworkStores<EcommerceContext>() //Store the users inside the database EcommerceContext using Entity Framework
+    .AddDefaultTokenProviders();// Add default token providers for password reset, email confirmation, etc.
 var secret = builder.Configuration["Jwt:Key"];
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(options => //used to add authentication services to the application,
@@ -58,7 +87,7 @@ builder.Services.AddAuthentication(options => //used to add authentication servi
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;//to authenticate the user
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;//to reject no token or invalid token condition
-}) 
+})
 .AddJwtBearer(options =>//the parameters to consider when validating the JWT token.
 {
     options.TokenValidationParameters = new TokenValidationParameters
@@ -74,13 +103,6 @@ builder.Services.AddAuthentication(options => //used to add authentication servi
         Encoding.UTF8.GetBytes(secret))
     };
 });
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>() //enables password hashing, user validation, and other identity features for
-                                                              //ApplicationUser and IdentityRole, IdentityRole is a class that represents a role in
-                                                              //the identity system, allowing you to manage user roles and permissions effectively and
-                                                              //create AspNetRoles table in the database
-    .AddEntityFrameworkStores<EcommerceContext>() //Store the users inside the database EcommerceContext using Entity Framework
-    .AddDefaultTokenProviders();// Add default token providers for password reset, email confirmation, etc.
-
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())//app.Service is a global container containing all services of the app, CreateScope() is to create a temporary mini-container
 {

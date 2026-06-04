@@ -10,7 +10,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EcommerceApplication.Controllers
 {
-    [Authorize]
+    
     [ApiController]
     [Route("ecommerce/[controller]")]
     public class ProductsController : ControllerBase
@@ -29,6 +29,9 @@ namespace EcommerceApplication.Controllers
         [HttpGet("allproduct")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public IActionResult GetProducts([FromQuery] ProductFilterDTO filter)
         {
             try
@@ -53,6 +56,9 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<ProductDTO> GetProductById(int id)
         {
             try
@@ -85,6 +91,9 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<ProductDTO> GetProductByName(string name)
         {
             try
@@ -116,6 +125,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<Product> PostProduct(Product product)
         {
             try
@@ -149,6 +160,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<ProductDTO> PatchProduct(int id, ProductPatchDTO product)
         {
             try
@@ -178,6 +191,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<ProductDTO> PutProduct(int id, ProductDTO product)
         {
             try
@@ -207,6 +222,9 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<ProductDTO> GetProductsByCompany(int id)
         {
             try
@@ -237,6 +255,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult DeleteProduct(int id)
         {
             try
@@ -267,6 +287,8 @@ namespace EcommerceApplication.Controllers
         [HttpPost("upload-image/{productId}")]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UploadImage(int productId, IFormFile file)
         {
             try
@@ -293,7 +315,7 @@ namespace EcommerceApplication.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading image for product {ProductId}", productId);
-                return StatusCode(500, "Internal server error");
+                return StatusCode(500, ex.ToString());
             }
         }
 
