@@ -216,7 +216,7 @@ namespace EcommerceApplication.Services
                 await file.CopyToAsync(stream);
             }
 
-            var imageUrl = $"/uploads/products/{fileName}";
+            var imageUrl = $"/Uploads/Products/{fileName}";
 
             product.ImageUrl = imageUrl;
             _repository.Update(product);

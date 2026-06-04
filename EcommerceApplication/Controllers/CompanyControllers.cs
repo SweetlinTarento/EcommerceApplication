@@ -10,7 +10,7 @@ using Serilog.Core;
 
 namespace EcommerceApplication.Controllers
 {
-    [Authorize]
+    
     [ApiController]
     [Route("ecommerce/[controller]")]
     public class CompanyController : ControllerBase
@@ -29,6 +29,9 @@ namespace EcommerceApplication.Controllers
         [HttpGet("allcompany")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public IActionResult GetCompanies([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -52,6 +55,9 @@ namespace EcommerceApplication.Controllers
         [HttpGet("search")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public IActionResult SearchCompanies([FromQuery] string searchTerm, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -83,6 +89,9 @@ namespace EcommerceApplication.Controllers
         [HttpGet("searchbylocation")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public IActionResult SearchByLocation([FromQuery] string location, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -115,6 +124,9 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<CompanyDTO> GetCompanyById(int id)
         {
             try
@@ -143,6 +155,9 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<CompanyDTO> GetCompanyByName(string name)
         {
             try
@@ -174,6 +189,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<Company> PostCompany(Company company)
         {
             try
@@ -200,6 +217,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<CompanyPatchDTO> PatchCompany(int id, CompanyPatchDTO company)
         {
             try
@@ -226,6 +245,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult<Company> PutCompany(int id, Company company)
         {
             try
@@ -257,6 +278,8 @@ namespace EcommerceApplication.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public ActionResult DeleteCompany(int id)
         {
             try
@@ -284,8 +307,6 @@ namespace EcommerceApplication.Controllers
             }
 
         }
-
-
     }
 }
 
